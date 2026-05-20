@@ -1,0 +1,7 @@
+[
+  {
+    "ip": "123.123.123.123",
+    "reason": "Known suspicious source",
+    "createdAt": "2026-01-28T00:00:00.000Z"
+  }
+]

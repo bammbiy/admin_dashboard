@@ -1,19 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Admin Login</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="container">
-    <h2>Login</h2>
-    <form id="loginForm">
-      <input id="username" placeholder="Username" required />
-      <input id="password" type="password" placeholder="Password" required />
-      <button type="submit">Login</button>
-    </form>
-  </div>
+  <main class="login-shell">
+    <section class="login-panel">
+      <p class="eyebrow">Security Admin</p>
+      <h1>관리자 로그인</h1>
+      <p class="muted">세션 기반 인증으로 대시보드에 접근합니다.</p>
+      <form id="loginForm" class="form-stack">
+        <label>
+          아이디
+          <input id="username" autocomplete="username" placeholder="admin" required>
+        </label>
+        <label>
+          비밀번호
+          <input id="password" type="password" autocomplete="current-password" placeholder="admin123" required>
+        </label>
+        <p id="loginMessage" class="message" role="alert"></p>
+        <button type="submit">로그인</button>
+      </form>
+    </section>
+  </main>
   <script src="js/login.js"></script>
 </body>
 </html>

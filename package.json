@@ -1,0 +1,13 @@
+{
+  "name": "secure-admin-dashboard",
+  "version": "1.0.0",
+  "description": "Security-focused admin dashboard with session auth, user management, access logs, and IP blocking.",
+  "main": "server/app.js",
+  "scripts": {
+    "start": "node server/app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.3",
+    "express-session": "^1.18.0"
+  }
+}
