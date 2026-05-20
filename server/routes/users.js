@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const requireRole = require('../middleware/requireRole');
 const { readJson, writeJson } = require('../utils/dataStore');
 const { hashPassword } = require('../utils/password');
+const { writeAuditLog } = require('../utils/audit');
 
 function sanitizeUser(user) {
   return {
@@ -21,7 +23,7 @@ router.get('/', authMiddleware, (req, res) => {
   res.json(users.map(sanitizeUser));
 });
 
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, requireRole('manager'), (req, res) => {
   const { username, name, role, status, password } = req.body;
   const users = readJson('users.json', []);
 
@@ -31,6 +33,10 @@ router.post('/', authMiddleware, (req, res) => {
 
   if (users.some((user) => user.username === username)) {
     return res.status(409).json({ message: 'Username already exists.' });
+  }
+
+  if (role === 'admin' && req.session.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Only admins can create admin accounts.' });
   }
 
   const passwordData = hashPassword(password);
@@ -48,10 +54,11 @@ router.post('/', authMiddleware, (req, res) => {
 
   users.push(user);
   writeJson('users.json', users);
+  writeAuditLog(req, 'USER_CREATED', username, `role=${user.role}`);
   res.status(201).json(sanitizeUser(user));
 });
 
-router.patch('/:id', authMiddleware, (req, res) => {
+router.patch('/:id', authMiddleware, requireRole('manager'), (req, res) => {
   const users = readJson('users.json', []);
   const user = users.find((item) => item.id === req.params.id);
 
@@ -60,6 +67,14 @@ router.patch('/:id', authMiddleware, (req, res) => {
   }
 
   const { name, role, status, password } = req.body;
+
+  if (role && req.session.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Only admins can change roles.' });
+  }
+
+  if (user.role === 'admin' && req.session.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Only admins can update admin accounts.' });
+  }
 
   if (name) user.name = name;
   if (role) user.role = role;
@@ -72,10 +87,11 @@ router.patch('/:id', authMiddleware, (req, res) => {
   }
 
   writeJson('users.json', users);
+  writeAuditLog(req, 'USER_UPDATED', user.username, `status=${user.status}, role=${user.role}`);
   res.json(sanitizeUser(user));
 });
 
-router.delete('/:id', authMiddleware, (req, res) => {
+router.delete('/:id', authMiddleware, requireRole('admin'), (req, res) => {
   const users = readJson('users.json', []);
   const user = users.find((item) => item.id === req.params.id);
 
@@ -88,6 +104,7 @@ router.delete('/:id', authMiddleware, (req, res) => {
   }
 
   writeJson('users.json', users.filter((item) => item.id !== req.params.id));
+  writeAuditLog(req, 'USER_DELETED', user.username);
   res.status(204).end();
 });
 

@@ -204,7 +204,7 @@ select {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
   gap: 16px;
 }
 
@@ -234,6 +234,12 @@ select {
 .inline-form {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.filter-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 160px 120px 120px 120px;
   gap: 10px;
 }
 
@@ -315,6 +321,20 @@ tr:last-child td {
   text-align: center;
 }
 
+.helper-text,
+.muted-action {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.helper-text {
+  margin: 8px 0 0;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
 .toast {
   position: fixed;
   right: 24px;
@@ -353,6 +373,7 @@ tr:last-child td {
 
   .metric-grid,
   .inline-form,
+  .filter-form,
   #ipForm {
     grid-template-columns: 1fr 1fr;
   }
@@ -372,6 +393,7 @@ tr:last-child td {
   .nav-tabs,
   .metric-grid,
   .inline-form,
+  .filter-form,
   #ipForm {
     grid-template-columns: 1fr;
   }

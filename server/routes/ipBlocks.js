@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const requireRole = require('../middleware/requireRole');
 const { readJson, writeJson } = require('../utils/dataStore');
+const { writeAuditLog } = require('../utils/audit');
 
 router.get('/', authMiddleware, (req, res) => {
   res.json(readJson('blockedIps.json', []));
 });
 
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, requireRole('manager'), (req, res) => {
   const { ip, reason } = req.body;
 
   if (!ip) {
@@ -28,16 +30,18 @@ router.post('/', authMiddleware, (req, res) => {
 
   blockedIps.push(entry);
   writeJson('blockedIps.json', blockedIps);
+  writeAuditLog(req, 'IP_BLOCKED', ip, entry.reason);
   res.status(201).json(entry);
 });
 
-router.delete('/:ip', authMiddleware, (req, res) => {
+router.delete('/:ip', authMiddleware, requireRole('manager'), (req, res) => {
   const blockedIps = readJson('blockedIps.json', []);
   writeJson(
     'blockedIps.json',
     blockedIps.filter((entry) => entry.ip !== req.params.ip)
   );
 
+  writeAuditLog(req, 'IP_UNBLOCKED', req.params.ip);
   res.status(204).end();
 });
 
