@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Secure Admin Dashboard</title>
+  <title>Community Risk Intelligence</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div>
-        <p class="eyebrow">Admin</p>
-        <h1>Security Center</h1>
+        <p class="eyebrow">Community Ops</p>
+        <h1>Risk Intelligence</h1>
       </div>
       <nav class="nav-tabs" aria-label="Dashboard sections">
-        <button class="active" data-tab="overview" type="button">개요</button>
+        <button class="active" data-tab="overview" type="button">관제실</button>
+        <button data-tab="signal" type="button">Signal Map</button>
+        <button data-tab="moderation" type="button">Moderation Queue</button>
         <button data-tab="users" type="button">사용자</button>
         <button data-tab="logs" type="button">접근 로그</button>
         <button data-tab="audit" type="button">감사 로그</button>
@@ -26,8 +28,8 @@
     <main class="dashboard">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Session Active</p>
-          <h2 id="welcomeTitle">관리자 대시보드</h2>
+          <p class="eyebrow">AI-assisted Moderation</p>
+          <h2 id="welcomeTitle">커뮤니티 운영 관제실</h2>
         </div>
         <span id="currentUser" class="badge">확인 중</span>
       </header>
@@ -42,19 +44,72 @@
             <span>활성 사용자</span>
             <strong id="activeUsers">0</strong>
           </article>
+          <article class="metric-card risk">
+            <span>제재 후보</span>
+            <strong id="queueCount">0</strong>
+          </article>
           <article class="metric-card">
-            <span>접근 로그</span>
-            <strong id="totalLogs">0</strong>
+            <span>감지 키워드</span>
+            <strong id="keywordCount">0</strong>
           </article>
           <article class="metric-card">
             <span>감사 로그</span>
             <strong id="totalAuditLogs">0</strong>
           </article>
-          <article class="metric-card">
-            <span>차단 IP</span>
-            <strong id="blockedIps">0</strong>
-          </article>
         </div>
+        <div class="insight-grid">
+          <section class="panel">
+            <div class="section-head compact">
+              <h2>급상승 신호</h2>
+              <button class="secondary-button" data-tab-jump="signal" type="button">지도 보기</button>
+            </div>
+            <div id="trendKeywords" class="keyword-cloud"></div>
+          </section>
+          <section class="panel">
+            <div class="section-head compact">
+              <h2>우선 처리 큐</h2>
+              <button class="secondary-button" data-tab-jump="moderation" type="button">큐 열기</button>
+            </div>
+            <div id="priorityQueue" class="queue-preview"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="signal" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Signal Map</h2>
+            <p class="helper-text">키워드가 어떤 게시글과 댓글에서 확산되는지 시각화합니다.</p>
+          </div>
+          <form id="signalSearchForm" class="search-row">
+            <input id="signalKeyword" placeholder="예: 환불, 사기, 개인정보">
+            <button type="submit">분석</button>
+          </form>
+        </div>
+        <div class="signal-layout">
+          <section class="panel signal-canvas">
+            <div id="signalMap" class="signal-map"></div>
+          </section>
+          <section class="panel">
+            <h2>확산 타임라인</h2>
+            <div id="signalTimeline" class="timeline"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <h2>연관 게시글</h2>
+          <div id="relatedPosts" class="related-grid"></div>
+        </section>
+      </section>
+
+      <section id="moderation" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Moderation Queue</h2>
+            <p class="helper-text">룰 기반 분석이 위험도를 계산하고, 관리자는 근거를 확인한 뒤 조치합니다.</p>
+          </div>
+          <button id="refreshModeration" class="secondary-button" type="button">새로고침</button>
+        </div>
+        <div id="moderationQueue" class="moderation-list"></div>
       </section>
 
       <section id="users" class="tab-panel">
@@ -65,7 +120,7 @@
           </div>
           <input id="userSearch" class="search-input" placeholder="사용자 검색">
         </div>
-        <form id="userForm" class="inline-form privileged manager-only">
+        <form id="userForm" class="inline-form manager-only">
           <input id="newUsername" placeholder="아이디" required>
           <input id="newName" placeholder="이름" required>
           <input id="newPassword" type="password" placeholder="초기 비밀번호" required>
@@ -134,7 +189,7 @@
         <div class="section-head">
           <div>
             <h2>감사 로그</h2>
-            <p class="helper-text">사용자, 권한, IP 차단 변경 이력을 추적합니다.</p>
+            <p class="helper-text">사용자, 권한, IP 차단, 모더레이션 변경 이력을 추적합니다.</p>
           </div>
           <button id="refreshAuditLogs" class="secondary-button" type="button">새로고침</button>
         </div>
@@ -162,7 +217,7 @@
             <p class="helper-text">manager 이상만 IP 차단 정책을 변경할 수 있습니다.</p>
           </div>
         </div>
-        <form id="ipForm" class="inline-form privileged manager-only">
+        <form id="ipForm" class="inline-form manager-only">
           <input id="blockIp" placeholder="예: 203.0.113.10" required>
           <input id="blockReason" placeholder="차단 사유">
           <button type="submit">차단</button>

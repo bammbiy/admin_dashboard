@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const logRoutes = require('./routes/logs');
 const ipBlockRoutes = require('./routes/ipBlocks');
+const intelligenceRoutes = require('./routes/intelligence');
 const logger = require('./middleware/logger');
 const ipFilter = require('./middleware/ipFilter');
 
@@ -34,6 +35,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/ip-blocks', ipBlockRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 app.listen(3000, () => {
   console.log('Server running on port 3000');

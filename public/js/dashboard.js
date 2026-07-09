@@ -9,6 +9,8 @@ const state = {
   logs: [],
   auditLogs: [],
   ips: [],
+  signalMap: null,
+  moderationQueue: [],
   me: null
 };
 
@@ -65,9 +67,9 @@ function escapeHtml(value) {
 function renderMetrics() {
   $('#totalUsers').textContent = state.users.length;
   $('#activeUsers').textContent = state.users.filter((user) => user.status === 'active').length;
-  $('#totalLogs').textContent = state.logs.length;
+  $('#queueCount').textContent = state.moderationQueue.filter((item) => item.status === 'pending').length;
+  $('#keywordCount').textContent = state.signalMap?.trendKeywords?.length || 0;
   $('#totalAuditLogs').textContent = state.auditLogs.length;
-  $('#blockedIps').textContent = state.ips.length;
 }
 
 function renderPermissions() {
@@ -76,10 +78,162 @@ function renderPermissions() {
   });
 }
 
+function switchTab(tabId) {
+  document.querySelectorAll('.nav-tabs button, .tab-panel').forEach((item) => item.classList.remove('active'));
+  document.querySelector(`.nav-tabs button[data-tab="${tabId}"]`)?.classList.add('active');
+  document.getElementById(tabId)?.classList.add('active');
+}
+
+function severityLabel(severity) {
+  const labels = {
+    critical: '치명',
+    high: '높음',
+    medium: '주의',
+    low: '낮음'
+  };
+  return labels[severity] || severity;
+}
+
+function renderTrendKeywords() {
+  const keywords = state.signalMap?.trendKeywords || [];
+  $('#trendKeywords').innerHTML = keywords
+    .map((item) => `
+      <button class="keyword-chip" data-keyword="${escapeHtml(item.keyword)}" type="button">
+        ${escapeHtml(item.keyword)}
+        <span>${item.count}</span>
+      </button>
+    `)
+    .join('') || '<p class="empty">감지된 키워드가 없습니다.</p>';
+}
+
+function renderPriorityQueue() {
+  const items = state.moderationQueue
+    .filter((item) => item.status === 'pending')
+    .slice(0, 4);
+
+  $('#priorityQueue').innerHTML = items
+    .map((item) => `
+      <article class="queue-mini">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span class="risk-badge ${escapeHtml(item.severity)}">${item.score} / ${severityLabel(item.severity)}</span>
+        <p>${escapeHtml(item.policies[0]?.label || '정책 검토 필요')}</p>
+      </article>
+    `)
+    .join('') || '<p class="empty">처리할 제재 후보가 없습니다.</p>';
+}
+
+function renderSignalMap() {
+  if (!state.signalMap) return;
+
+  const nodes = state.signalMap.nodes || [];
+  const edges = state.signalMap.edges || [];
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const lines = edges
+    .map((edge) => {
+      const from = nodeMap.get(edge.from);
+      const to = nodeMap.get(edge.to);
+      if (!from || !to) return '';
+      return `<line x1="${from.x}%" y1="${from.y}%" x2="${to.x}%" y2="${to.y}%" />`;
+    })
+    .join('');
+
+  $('#signalKeyword').value = state.signalMap.keyword;
+  $('#signalMap').innerHTML = `
+    <svg class="signal-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
+    ${nodes
+      .map((node) => `
+        <button class="signal-node ${escapeHtml(node.type)} ${node.score >= 55 ? 'hot' : ''}"
+          style="left:${node.x}%; top:${node.y}%"
+          title="${escapeHtml(node.label)}"
+          type="button">
+          <span>${escapeHtml(node.type)}</span>
+          <strong>${escapeHtml(node.label)}</strong>
+        </button>
+      `)
+      .join('')}
+  `;
+}
+
+function renderSignalTimeline() {
+  const timeline = state.signalMap?.timeline || [];
+  $('#signalTimeline').innerHTML = timeline
+    .map((item) => `
+      <article class="timeline-item">
+        <span>${formatDate(item.createdAt)}</span>
+        <strong>${escapeHtml(item.title)}</strong>
+        <p>${escapeHtml(item.author)} · 위험도 ${item.score}</p>
+        <small>${escapeHtml(item.excerpt)}</small>
+      </article>
+    `)
+    .join('') || '<p class="empty">해당 키워드의 확산 기록이 없습니다.</p>';
+}
+
+function renderRelatedPosts() {
+  const posts = state.signalMap?.relatedPosts || [];
+  $('#relatedPosts').innerHTML = posts
+    .map((post) => `
+      <article class="related-card">
+        <span>${escapeHtml(post.category)} · ${escapeHtml(post.relation)}</span>
+        <strong>${escapeHtml(post.title)}</strong>
+        <p>조회 ${post.views.toLocaleString('ko-KR')} · 좋아요 ${post.likes.toLocaleString('ko-KR')}</p>
+        <div>${post.tags.map((tag) => `<em>${escapeHtml(tag)}</em>`).join('')}</div>
+      </article>
+    `)
+    .join('') || '<p class="empty">연관 게시글이 없습니다.</p>';
+}
+
+function renderSignal() {
+  renderTrendKeywords();
+  renderSignalMap();
+  renderSignalTimeline();
+  renderRelatedPosts();
+}
+
+function renderModerationQueue() {
+  $('#moderationQueue').innerHTML = state.moderationQueue
+    .map((item) => {
+      const evidence = item.policies
+        .map((policy) => `
+          <li>
+            <strong>${escapeHtml(policy.label)}</strong>
+            <span>${escapeHtml(policy.keywords.join(', '))}</span>
+            <small>${escapeHtml(policy.evidence || item.content)}</small>
+          </li>
+        `)
+        .join('');
+      const controls = item.status === 'pending' && can('manager')
+        ? `
+          <div class="action-row">
+            <button data-action="warn" data-target="${escapeHtml(item.targetId)}" type="button">경고</button>
+            <button class="danger-button" data-action="suspend" data-target="${escapeHtml(item.targetId)}" type="button">활동정지</button>
+            <button class="secondary-button" data-action="ignore" data-target="${escapeHtml(item.targetId)}" type="button">무시</button>
+          </div>
+        `
+        : `<span class="muted-action">${item.status === 'pending' ? '조치 권한 없음' : `처리됨: ${escapeHtml(item.action?.action || item.status)}`}</span>`;
+
+      return `
+        <article class="moderation-card ${escapeHtml(item.severity)}">
+          <div class="moderation-head">
+            <div>
+              <span class="content-type">${escapeHtml(item.type)}</span>
+              <h3>${escapeHtml(item.title)}</h3>
+              <p>${escapeHtml(item.author)} · ${formatDate(item.createdAt)}</p>
+            </div>
+            <span class="risk-badge ${escapeHtml(item.severity)}">${item.score} / ${severityLabel(item.severity)}</span>
+          </div>
+          <p class="content-excerpt">${escapeHtml(item.content)}</p>
+          <ul class="evidence-list">${evidence}</ul>
+          ${controls}
+        </article>
+      `;
+    })
+    .join('') || '<p class="empty">분석된 제재 후보가 없습니다.</p>';
+}
+
 function renderUsers() {
   const keyword = $('#userSearch').value.trim().toLowerCase();
   const rows = state.users
-    .filter((user) => `${user.username} ${user.name} ${user.role}`.toLowerCase().includes(keyword))
+    .filter((user) => `${user.username} ${user.name} ${user.role} ${user.status}`.toLowerCase().includes(keyword))
     .map((user) => {
       const canChangeStatus = can('manager') && (state.me.role === 'admin' || user.role !== 'admin');
       const canDelete = can('admin') && user.username !== state.me.username;
@@ -170,12 +324,25 @@ function getLogQuery() {
 async function loadLogs() {
   state.logs = await api(`/api/logs${getLogQuery()}`);
   renderLogs();
-  renderMetrics();
 }
 
 async function loadAuditLogs() {
   state.auditLogs = await api('/api/logs/audit');
   renderAuditLogs();
+  renderMetrics();
+}
+
+async function loadSignal(keyword = '') {
+  const query = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
+  state.signalMap = await api(`/api/intelligence/signal-map${query}`);
+  renderSignal();
+  renderMetrics();
+}
+
+async function loadModerationQueue() {
+  state.moderationQueue = await api('/api/intelligence/moderation-queue');
+  renderModerationQueue();
+  renderPriorityQueue();
   renderMetrics();
 }
 
@@ -185,12 +352,18 @@ async function loadDashboard() {
   state.logs = await api('/api/logs');
   state.auditLogs = await api('/api/logs/audit');
   state.ips = await api('/api/ip-blocks');
+  state.signalMap = await api('/api/intelligence/signal-map');
+  state.moderationQueue = await api('/api/intelligence/moderation-queue');
 
   $('#currentUser').textContent = `${state.me.name} / ${state.me.role}`;
-  $('#welcomeTitle').textContent = `${state.me.name}님, 좋은 하루입니다.`;
+  $('#welcomeTitle').textContent = `${state.me.name}님, 오늘의 위험 신호를 확인하세요.`;
 
   renderPermissions();
   renderMetrics();
+  renderTrendKeywords();
+  renderPriorityQueue();
+  renderSignal();
+  renderModerationQueue();
   renderUsers();
   renderLogs();
   renderAuditLogs();
@@ -198,11 +371,58 @@ async function loadDashboard() {
 }
 
 document.querySelectorAll('.nav-tabs button').forEach((button) => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('.nav-tabs button, .tab-panel').forEach((item) => item.classList.remove('active'));
-    button.classList.add('active');
-    document.getElementById(button.dataset.tab).classList.add('active');
-  });
+  button.addEventListener('click', () => switchTab(button.dataset.tab));
+});
+
+document.querySelectorAll('[data-tab-jump]').forEach((button) => {
+  button.addEventListener('click', () => switchTab(button.dataset.tabJump));
+});
+
+$('#trendKeywords').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-keyword]');
+  if (!button) return;
+  await loadSignal(button.dataset.keyword);
+  switchTab('signal');
+});
+
+$('#signalSearchForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await loadSignal($('#signalKeyword').value.trim());
+  showToast('키워드 확산 지도를 업데이트했습니다.');
+});
+
+$('#refreshModeration').addEventListener('click', async () => {
+  await loadModerationQueue();
+  showToast('모더레이션 큐를 새로 불러왔습니다.');
+});
+
+$('#moderationQueue').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+
+  const actionLabels = {
+    warn: '정책 위반 경고',
+    suspend: '위험 콘텐츠 작성자 활동정지',
+    ignore: '관리자 검토 후 예외 처리'
+  };
+
+  try {
+    await api(`/api/intelligence/moderation-queue/${encodeURIComponent(button.dataset.target)}/action`, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: button.dataset.action,
+        reason: actionLabels[button.dataset.action]
+      })
+    });
+
+    state.users = await api('/api/users');
+    await loadModerationQueue();
+    await loadAuditLogs();
+    renderUsers();
+    showToast('모더레이션 조치를 기록했습니다.');
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 $('#userSearch').addEventListener('input', renderUsers);

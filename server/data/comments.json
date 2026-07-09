@@ -1,0 +1,58 @@
+[
+  {
+    "id": "comment_201",
+    "postId": "post_101",
+    "authorId": "usr_guest_2",
+    "parentId": null,
+    "createdAt": "2026-06-26T09:24:00.000Z",
+    "content": "저도 환불 답변을 기다리고 있습니다. 문의량이 많아서 그런 듯합니다."
+  },
+  {
+    "id": "comment_202",
+    "postId": "post_101",
+    "authorId": "usr_guest_5",
+    "parentId": "comment_201",
+    "createdAt": "2026-06-26T09:36:00.000Z",
+    "content": "이건 운영이 너무 엉망입니다. 계속 무시하면 신고해야 합니다."
+  },
+  {
+    "id": "comment_203",
+    "postId": "post_102",
+    "authorId": "usr_guest_6",
+    "parentId": null,
+    "createdAt": "2026-06-27T12:35:00.000Z",
+    "content": "외부 링크에 결제 정보 입력하라는 건 사기 가능성이 높습니다."
+  },
+  {
+    "id": "comment_204",
+    "postId": "post_102",
+    "authorId": "usr_guest_7",
+    "parentId": null,
+    "createdAt": "2026-06-27T12:41:00.000Z",
+    "content": "무료 쿠폰 받으려면 여기 링크로 들어오세요 http://promo.bad/free"
+  },
+  {
+    "id": "comment_205",
+    "postId": "post_104",
+    "authorId": "usr_guest_8",
+    "parentId": null,
+    "createdAt": "2026-06-28T18:12:00.000Z",
+    "content": "전화번호 010-1234-5678 같은 정보가 보이면 바로 삭제해야 합니다."
+  },
+  {
+    "id": "comment_206",
+    "postId": "post_104",
+    "authorId": "usr_guest_9",
+    "parentId": "comment_205",
+    "createdAt": "2026-06-28T18:18:00.000Z",
+    "content": "개인정보 노출은 위험합니다. 관리자 확인이 필요합니다."
+  },
+  {
+    "id": "comment_207",
+    "postId": "post_105",
+    "authorId": "usr_guest_4",
+    "parentId": null,
+    "createdAt": "2026-06-29T10:43:00.000Z",
+    "content": "저는 환불 글을 몇 번 봤더니 관련 게시글이 계속 추천됩니다."
+  }
+]

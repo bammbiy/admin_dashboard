@@ -1,0 +1,57 @@
+[
+  {
+    "id": "post_101",
+    "title": "환불 정책이 갑자기 바뀐 건가요?",
+    "authorId": "usr_admin",
+    "category": "support",
+    "tags": ["refund", "policy", "support"],
+    "views": 842,
+    "likes": 31,
+    "createdAt": "2026-06-26T09:10:00.000Z",
+    "content": "최근 환불 요청을 했는데 답변이 늦어지고 있습니다. 같은 문제를 겪은 분들이 있나요?"
+  },
+  {
+    "id": "post_102",
+    "title": "이 링크 할인 이벤트 진짜인가요?",
+    "authorId": "usr_guest_1",
+    "category": "freeboard",
+    "tags": ["event", "link", "spam"],
+    "views": 1290,
+    "likes": 4,
+    "createdAt": "2026-06-27T12:22:00.000Z",
+    "content": "무료 쿠폰이라고 해서 외부 링크를 받았는데 결제 정보를 넣으라고 합니다. 사기 같기도 합니다."
+  },
+  {
+    "id": "post_103",
+    "title": "신규 업데이트 후기 모음",
+    "authorId": "usr_guest_2",
+    "category": "review",
+    "tags": ["update", "review", "feature"],
+    "views": 2150,
+    "likes": 118,
+    "createdAt": "2026-06-28T08:40:00.000Z",
+    "content": "이번 업데이트는 알림 설정과 검색 속도가 좋아졌습니다. 다만 일부 화면이 아직 느립니다."
+  },
+  {
+    "id": "post_104",
+    "title": "개인정보가 댓글에 노출된 것 같습니다",
+    "authorId": "usr_guest_3",
+    "category": "incident",
+    "tags": ["privacy", "incident", "report"],
+    "views": 532,
+    "likes": 15,
+    "createdAt": "2026-06-28T18:05:00.000Z",
+    "content": "누군가 전화번호와 이메일을 댓글에 그대로 적었습니다. 빨리 숨김 처리해야 할 것 같습니다."
+  },
+  {
+    "id": "post_105",
+    "title": "추천 게시글 기준이 궁금합니다",
+    "authorId": "usr_guest_4",
+    "category": "question",
+    "tags": ["recommendation", "algorithm", "interest"],
+    "views": 1760,
+    "likes": 72,
+    "createdAt": "2026-06-29T10:30:00.000Z",
+    "content": "요즘 환불, 업데이트, 이벤트 관련 글을 자주 보는데 추천 기준이 어떻게 잡히는지 궁금합니다."
+  }
+]
