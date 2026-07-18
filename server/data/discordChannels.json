@@ -1,0 +1,8 @@
+[
+  { "id": "ch_general", "name": "general", "type": "text", "topic": "daily chat" },
+  { "id": "ch_lol", "name": "league-of-legends", "type": "text", "topic": "League of Legends party and strategy" },
+  { "id": "ch_valorant", "name": "valorant", "type": "text", "topic": "Valorant party and clips" },
+  { "id": "ch_trade", "name": "trade", "type": "text", "topic": "item trading and marketplace" },
+  { "id": "ch_notice", "name": "notice", "type": "text", "topic": "server announcements" },
+  { "id": "vc_lobby", "name": "Game Lobby", "type": "voice", "topic": "main voice lobby" }
+]

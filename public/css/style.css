@@ -195,6 +195,20 @@ select {
   font-weight: 700;
 }
 
+.topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badge.connected {
+  color: var(--success);
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
 .tab-panel {
   display: none;
 }
@@ -339,6 +353,11 @@ tr:last-child td {
   color: var(--warning);
 }
 
+.status-pill.timeout {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
 .danger-button {
   min-height: 34px;
   background: #fee2e2;
@@ -407,14 +426,22 @@ tr:last-child td {
 .queue-preview,
 .moderation-list,
 .timeline,
-.related-grid {
+.related-grid,
+.message-list,
+.game-list,
+.member-grid,
+.mini-list {
   display: grid;
   gap: 12px;
 }
 
 .queue-mini,
 .timeline-item,
-.related-card {
+.related-card,
+.message-card,
+.game-row,
+.member-card,
+.mini-row {
   display: grid;
   gap: 8px;
   border: 1px solid var(--line);
@@ -427,10 +454,66 @@ tr:last-child td {
 .timeline-item p,
 .timeline-item small,
 .related-card p,
+.message-card p,
+.message-card small,
+.member-card p,
 .content-excerpt {
   margin: 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.mini-row,
+.game-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.mini-row span,
+.game-row span,
+.member-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.game-row b {
+  color: var(--primary-dark);
+}
+
+.member-grid {
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+}
+
+.member-card strong {
+  font-size: 18px;
+}
+
+.message-card {
+  border-left: 4px solid var(--line);
+}
+
+.message-card.critical {
+  border-left-color: var(--danger);
+}
+
+.message-card.high {
+  border-left-color: var(--accent);
+}
+
+.message-card.medium {
+  border-left-color: var(--warning);
+}
+
+.message-card > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.message-card > div span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .signal-canvas {
@@ -669,6 +752,7 @@ tr:last-child td {
   .signal-layout,
   .moderation-list,
   .related-grid,
+  .member-grid,
   #ipForm {
     grid-template-columns: 1fr 1fr;
   }
@@ -694,6 +778,7 @@ tr:last-child td {
   .signal-layout,
   .moderation-list,
   .related-grid,
+  .member-grid,
   #ipForm {
     grid-template-columns: 1fr;
   }

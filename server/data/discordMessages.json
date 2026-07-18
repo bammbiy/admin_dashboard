@@ -1,0 +1,92 @@
+[
+  {
+    "id": "msg_1001",
+    "channelId": "ch_general",
+    "authorId": "usr_minsu",
+    "createdAt": "2026-06-29T09:20:00.000Z",
+    "content": "오늘 롤 내전 몇 시에 시작해요? 정글 연습 좀 하고 싶습니다.",
+    "reactions": 5,
+    "replyCount": 3
+  },
+  {
+    "id": "msg_1002",
+    "channelId": "ch_lol",
+    "authorId": "usr_minsu",
+    "createdAt": "2026-06-29T10:05:00.000Z",
+    "content": "롤 듀오 구합니다. 탑/정글 위주로 가고 디스코드 음성 가능해요.",
+    "reactions": 9,
+    "replyCount": 6
+  },
+  {
+    "id": "msg_1003",
+    "channelId": "ch_trade",
+    "authorId": "usr_spam",
+    "createdAt": "2026-06-29T10:14:00.000Z",
+    "content": "무료 쿠폰 받으려면 이 링크 클릭하세요 http://promo.bad/free 결제 정보 입력하면 보상 지급됩니다.",
+    "reactions": 0,
+    "replyCount": 1
+  },
+  {
+    "id": "msg_1004",
+    "channelId": "ch_trade",
+    "authorId": "usr_jihun",
+    "createdAt": "2026-06-29T10:18:00.000Z",
+    "content": "저 링크 사기 같습니다. 결제 정보 요구하는 건 바로 신고해야 합니다.",
+    "reactions": 12,
+    "replyCount": 4
+  },
+  {
+    "id": "msg_1005",
+    "channelId": "ch_valorant",
+    "authorId": "usr_doyun",
+    "createdAt": "2026-06-29T11:36:00.000Z",
+    "content": "발로란트 경쟁전 5인큐 구합니다. 오늘은 감시자 연습할게요.",
+    "reactions": 7,
+    "replyCount": 5
+  },
+  {
+    "id": "msg_1006",
+    "channelId": "ch_general",
+    "authorId": "usr_seoyeon",
+    "createdAt": "2026-06-29T12:02:00.000Z",
+    "content": "개인정보 올리지 말아주세요. 전화번호나 이메일은 DM에도 조심해야 합니다.",
+    "reactions": 15,
+    "replyCount": 2
+  },
+  {
+    "id": "msg_1007",
+    "channelId": "ch_lol",
+    "authorId": "usr_minsu",
+    "createdAt": "2026-06-29T13:44:00.000Z",
+    "content": "핵 의심 유저 만났는데 리플레이 보고 판단 가능할까요?",
+    "reactions": 4,
+    "replyCount": 7
+  },
+  {
+    "id": "msg_1008",
+    "channelId": "ch_general",
+    "authorId": "usr_jihun",
+    "createdAt": "2026-06-29T14:11:00.000Z",
+    "content": "서버 규칙 위반하면 타임아웃 될 수 있다고 공지에 적어두면 좋겠습니다.",
+    "reactions": 8,
+    "replyCount": 2
+  },
+  {
+    "id": "msg_1009",
+    "channelId": "ch_valorant",
+    "authorId": "usr_doyun",
+    "createdAt": "2026-06-29T18:28:00.000Z",
+    "content": "발로란트 내전 결과 공유합니다. 다음엔 맵 밴 기준도 정해봐요.",
+    "reactions": 10,
+    "replyCount": 3
+  },
+  {
+    "id": "msg_1010",
+    "channelId": "ch_trade",
+    "authorId": "usr_spam",
+    "createdAt": "2026-06-29T20:42:00.000Z",
+    "content": "대리 랭크 빠르게 올려드립니다. 선입금 문의 DM 주세요.",
+    "reactions": 1,
+    "replyCount": 0
+  }
+]

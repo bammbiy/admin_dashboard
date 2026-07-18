@@ -3,20 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Community Risk Intelligence</title>
+  <title>Discord Server Intelligence</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div>
-        <p class="eyebrow">Community Ops</p>
-        <h1>Risk Intelligence</h1>
+        <p class="eyebrow">Discord Ops</p>
+        <h1>Server Intelligence</h1>
       </div>
       <nav class="nav-tabs" aria-label="Dashboard sections">
         <button class="active" data-tab="overview" type="button">관제실</button>
+        <button data-tab="keyword" type="button">Keyword Tracker</button>
         <button data-tab="signal" type="button">Signal Map</button>
         <button data-tab="moderation" type="button">Moderation Queue</button>
+        <button data-tab="games" type="button">Game Analytics</button>
         <button data-tab="users" type="button">사용자</button>
         <button data-tab="logs" type="button">접근 로그</button>
         <button data-tab="audit" type="button">감사 로그</button>
@@ -28,10 +30,13 @@
     <main class="dashboard">
       <header class="topbar">
         <div>
-          <p class="eyebrow">AI-assisted Moderation</p>
-          <h2 id="welcomeTitle">커뮤니티 운영 관제실</h2>
+          <p class="eyebrow">Moderation + Activity Analytics</p>
+          <h2 id="welcomeTitle">디스코드 서버 관제실</h2>
         </div>
-        <span id="currentUser" class="badge">확인 중</span>
+        <div class="topbar-status">
+          <span id="discordStatus" class="badge">Discord: 확인 중</span>
+          <span id="currentUser" class="badge">확인 중</span>
+        </div>
       </header>
 
       <section id="overview" class="tab-panel active">
@@ -39,10 +44,6 @@
           <article class="metric-card">
             <span>전체 사용자</span>
             <strong id="totalUsers">0</strong>
-          </article>
-          <article class="metric-card">
-            <span>활성 사용자</span>
-            <strong id="activeUsers">0</strong>
           </article>
           <article class="metric-card risk">
             <span>제재 후보</span>
@@ -53,17 +54,22 @@
             <strong id="keywordCount">0</strong>
           </article>
           <article class="metric-card">
-            <span>감사 로그</span>
-            <strong id="totalAuditLogs">0</strong>
+            <span>게임 세션</span>
+            <strong id="gameSessionCount">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>평균 플레이</span>
+            <strong id="averageGameTime">0m</strong>
           </article>
         </div>
         <div class="insight-grid">
           <section class="panel">
             <div class="section-head compact">
-              <h2>급상승 신호</h2>
-              <button class="secondary-button" data-tab-jump="signal" type="button">지도 보기</button>
+              <h2>채널별 키워드 신호</h2>
+              <button class="secondary-button" data-tab-jump="keyword" type="button">추적 열기</button>
             </div>
             <div id="trendKeywords" class="keyword-cloud"></div>
+            <div id="channelSignals" class="mini-list"></div>
           </section>
           <section class="panel">
             <div class="section-head compact">
@@ -75,14 +81,41 @@
         </div>
       </section>
 
+      <section id="keyword" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Keyword Tracker</h2>
+            <p class="helper-text">키워드가 어떤 채널에서, 누가, 어떤 문맥으로 썼는지 추적합니다.</p>
+          </div>
+          <form id="keywordSearchForm" class="search-row">
+            <input id="keywordInput" placeholder="예: 롤, 사기, 개인정보, 대리">
+            <button type="submit">추적</button>
+          </form>
+        </div>
+        <div class="insight-grid">
+          <section class="panel">
+            <h2>채널 분포</h2>
+            <div id="keywordChannels" class="mini-list"></div>
+          </section>
+          <section class="panel">
+            <h2>키워드 후보</h2>
+            <div id="keywordSuggestions" class="keyword-cloud"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <h2>메시지 매치</h2>
+          <div id="keywordMatches" class="message-list"></div>
+        </section>
+      </section>
+
       <section id="signal" class="tab-panel">
         <div class="section-head">
           <div>
             <h2>Signal Map</h2>
-            <p class="helper-text">키워드가 어떤 게시글과 댓글에서 확산되는지 시각화합니다.</p>
+            <p class="helper-text">키워드가 채널과 메시지를 따라 어떻게 퍼지는지 시각화합니다.</p>
           </div>
           <form id="signalSearchForm" class="search-row">
-            <input id="signalKeyword" placeholder="예: 환불, 사기, 개인정보">
+            <input id="signalKeyword" placeholder="예: 롤, 사기, 개인정보">
             <button type="submit">분석</button>
           </form>
         </div>
@@ -95,21 +128,41 @@
             <div id="signalTimeline" class="timeline"></div>
           </section>
         </div>
-        <section class="panel">
-          <h2>연관 게시글</h2>
-          <div id="relatedPosts" class="related-grid"></div>
-        </section>
       </section>
 
       <section id="moderation" class="tab-panel">
         <div class="section-head">
           <div>
             <h2>Moderation Queue</h2>
-            <p class="helper-text">룰 기반 분석이 위험도를 계산하고, 관리자는 근거를 확인한 뒤 조치합니다.</p>
+            <p class="helper-text">정책 위반 의심 메시지를 위험도와 근거 중심으로 검토합니다.</p>
           </div>
           <button id="refreshModeration" class="secondary-button" type="button">새로고침</button>
         </div>
         <div id="moderationQueue" class="moderation-list"></div>
+      </section>
+
+      <section id="games" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Game Analytics</h2>
+            <p class="helper-text">멤버별 선호 게임, 평균 플레이 시간, 같이 플레이하는 조합을 분석합니다.</p>
+          </div>
+          <button id="refreshGames" class="secondary-button" type="button">새로고침</button>
+        </div>
+        <div class="insight-grid">
+          <section class="panel">
+            <h2>게임별 활동</h2>
+            <div id="gameStats" class="game-list"></div>
+          </section>
+          <section class="panel">
+            <h2>채널 관심도</h2>
+            <div id="channelInterest" class="mini-list"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <h2>멤버별 플레이 패턴</h2>
+          <div id="memberGameStats" class="member-grid"></div>
+        </section>
       </section>
 
       <section id="users" class="tab-panel">
@@ -189,7 +242,7 @@
         <div class="section-head">
           <div>
             <h2>감사 로그</h2>
-            <p class="helper-text">사용자, 권한, IP 차단, 모더레이션 변경 이력을 추적합니다.</p>
+            <p class="helper-text">사용자, IP 차단, 디스코드 모더레이션 조치 이력을 추적합니다.</p>
           </div>
           <button id="refreshAuditLogs" class="secondary-button" type="button">새로고침</button>
         </div>

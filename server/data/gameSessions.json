@@ -1,0 +1,65 @@
+[
+  {
+    "id": "game_2001",
+    "userId": "usr_minsu",
+    "game": "League of Legends",
+    "startedAt": "2026-06-25T19:00:00.000Z",
+    "minutes": 142,
+    "party": ["usr_seoyeon", "usr_jihun"],
+    "channelId": "vc_lobby"
+  },
+  {
+    "id": "game_2002",
+    "userId": "usr_minsu",
+    "game": "League of Legends",
+    "startedAt": "2026-06-26T20:10:00.000Z",
+    "minutes": 188,
+    "party": ["usr_doyun"],
+    "channelId": "vc_lobby"
+  },
+  {
+    "id": "game_2003",
+    "userId": "usr_doyun",
+    "game": "VALORANT",
+    "startedAt": "2026-06-27T21:20:00.000Z",
+    "minutes": 164,
+    "party": ["usr_minsu", "usr_seoyeon"],
+    "channelId": "vc_lobby"
+  },
+  {
+    "id": "game_2004",
+    "userId": "usr_seoyeon",
+    "game": "Stardew Valley",
+    "startedAt": "2026-06-28T18:30:00.000Z",
+    "minutes": 96,
+    "party": ["usr_jihun"],
+    "channelId": "vc_lobby"
+  },
+  {
+    "id": "game_2005",
+    "userId": "usr_jihun",
+    "game": "Minecraft",
+    "startedAt": "2026-06-28T22:15:00.000Z",
+    "minutes": 121,
+    "party": ["usr_seoyeon", "usr_minsu"],
+    "channelId": "vc_lobby"
+  },
+  {
+    "id": "game_2006",
+    "userId": "usr_doyun",
+    "game": "VALORANT",
+    "startedAt": "2026-06-29T20:00:00.000Z",
+    "minutes": 210,
+    "party": ["usr_minsu"],
+    "channelId": "vc_lobby"
+  },
+  {
+    "id": "game_2007",
+    "userId": "usr_minsu",
+    "game": "League of Legends",
+    "startedAt": "2026-06-29T20:30:00.000Z",
+    "minutes": 156,
+    "party": ["usr_doyun", "usr_jihun"],
+    "channelId": "vc_lobby"
+  }
+]

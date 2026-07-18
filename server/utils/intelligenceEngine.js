@@ -9,31 +9,47 @@ const POLICY_RULES = [
   {
     id: 'fraud',
     label: '사기/피싱 의심',
-    severity: 'high',
-    score: 40,
+    severity: 'critical',
+    score: 45,
     keywords: ['사기', '결제 정보', '무료 쿠폰', '외부 링크', 'http://', 'https://']
+  },
+  {
+    id: 'boosting',
+    label: '대리/부정 플레이',
+    severity: 'high',
+    score: 38,
+    keywords: ['대리', '선입금', '핵', '부정', '랭크']
   },
   {
     id: 'harassment',
     label: '분쟁/공격성',
     severity: 'medium',
     score: 25,
-    keywords: ['신고', '엉망', '무시', '위험']
+    keywords: ['신고', '규칙 위반', '타임아웃', '욕설']
   },
   {
     id: 'spam',
     label: '스팸/광고',
     severity: 'medium',
     score: 30,
-    keywords: ['무료', '쿠폰', '링크', '이벤트']
-  },
-  {
-    id: 'support-risk',
-    label: '고객 불만 확산',
-    severity: 'low',
-    score: 18,
-    keywords: ['환불', '답변', '문의', '정책']
+    keywords: ['무료', '쿠폰', '링크', 'DM', '문의']
   }
+];
+
+const KEYWORD_DICTIONARY = [
+  '롤',
+  '발로란트',
+  '내전',
+  '사기',
+  '무료',
+  '쿠폰',
+  '링크',
+  '개인정보',
+  '전화번호',
+  '대리',
+  '핵',
+  '타임아웃',
+  '규칙 위반'
 ];
 
 function normalize(value) {
@@ -44,12 +60,10 @@ function findEvidence(text, keyword) {
   const source = String(text || '');
   const index = normalize(source).indexOf(normalize(keyword));
 
-  if (index < 0) {
-    return '';
-  }
+  if (index < 0) return '';
 
   const start = Math.max(0, index - 22);
-  const end = Math.min(source.length, index + keyword.length + 28);
+  const end = Math.min(source.length, index + keyword.length + 32);
   return source.slice(start, end);
 }
 
@@ -61,7 +75,7 @@ function analyzeText(text) {
     const keywords = rule.keywords.filter((keyword) => normalize(text).includes(normalize(keyword)));
 
     if (keywords.length > 0) {
-      score += rule.score + Math.min(15, (keywords.length - 1) * 5);
+      score += rule.score + Math.min(20, (keywords.length - 1) * 6);
       matches.push({
         policyId: rule.id,
         label: rule.label,
@@ -85,39 +99,157 @@ function severityFromScore(score) {
   return 'low';
 }
 
-function getAuthorName(users, authorId) {
-  const user = users.find((item) => item.id === authorId);
-  return user?.username || authorId.replace(/^usr_/, '');
+function getMemberName(members, userId) {
+  const member = members.find((item) => item.id === userId);
+  return member?.displayName || userId.replace(/^usr_/, '');
 }
 
-function buildModerationQueue(posts, comments, users, actions = []) {
-  const actionMap = new Map(actions.map((action) => [action.targetId, action]));
-  const contentItems = [
-    ...posts.map((post) => ({ type: 'post', item: post, post })),
-    ...comments.map((comment) => ({
-      type: 'comment',
-      item: comment,
-      post: posts.find((post) => post.id === comment.postId)
+function getChannelName(channels, channelId) {
+  const channel = channels.find((item) => item.id === channelId);
+  return channel ? `#${channel.name}` : channelId;
+}
+
+function extractKeywords(messages) {
+  const counts = new Map();
+
+  messages.forEach((message) => {
+    KEYWORD_DICTIONARY.forEach((keyword) => {
+      if (message.content.includes(keyword)) {
+        counts.set(keyword, (counts.get(keyword) || 0) + 1);
+      }
+    });
+  });
+
+  return [...counts.entries()]
+    .map(([keyword, count]) => ({ keyword, count }))
+    .sort((a, b) => b.count - a.count || a.keyword.localeCompare(b.keyword));
+}
+
+function buildKeywordTracker(messages, channels, members, keyword) {
+  const trendKeywords = extractKeywords(messages);
+  const selectedKeyword = keyword || trendKeywords[0]?.keyword || '롤';
+  const matches = messages
+    .filter((message) => message.content.includes(selectedKeyword))
+    .map((message) => {
+      const analysis = analyzeText(message.content);
+      return {
+        id: message.id,
+        channelId: message.channelId,
+        channel: getChannelName(channels, message.channelId),
+        authorId: message.authorId,
+        author: getMemberName(members, message.authorId),
+        createdAt: message.createdAt,
+        content: message.content,
+        reactions: message.reactions,
+        replyCount: message.replyCount,
+        score: analysis.score,
+        severity: severityFromScore(analysis.score),
+        policies: analysis.matches,
+        context: findEvidence(message.content, selectedKeyword) || message.content
+      };
+    })
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  const channelCounts = channels
+    .map((channel) => ({
+      channelId: channel.id,
+      channel: getChannelName(channels, channel.id),
+      count: matches.filter((message) => message.channelId === channel.id).length
     }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    keyword: selectedKeyword,
+    trendKeywords,
+    channelCounts,
+    matches
+  };
+}
+
+function buildSignalMap(messages, channels, members, keyword) {
+  const tracker = buildKeywordTracker(messages, channels, members, keyword);
+  const nodes = [
+    {
+      id: 'keyword',
+      type: 'keyword',
+      label: tracker.keyword,
+      score: 100,
+      x: 50,
+      y: 50
+    }
+  ];
+  const edges = [];
+  const channelPositions = [
+    [22, 24],
+    [78, 24],
+    [22, 76],
+    [78, 76],
+    [50, 18]
   ];
 
-  return contentItems
-    .map(({ type, item, post }) => {
-      const title = type === 'post' ? item.title : post?.title || 'Unknown post';
-      const text = type === 'post' ? `${item.title} ${item.content}` : item.content;
-      const analysis = analyzeText(text);
-      const action = actionMap.get(item.id);
+  tracker.channelCounts.forEach((channel, index) => {
+    const [x, y] = channelPositions[index % channelPositions.length];
+    nodes.push({
+      id: channel.channelId,
+      type: 'channel',
+      label: channel.channel,
+      score: Math.min(100, channel.count * 30),
+      x,
+      y
+    });
+    edges.push({ from: 'keyword', to: channel.channelId, label: 'mentioned in' });
+  });
+
+  tracker.matches.forEach((message, index) => {
+    const x = 18 + (index % 4) * 22;
+    const y = 38 + Math.floor(index / 4) * 18;
+    nodes.push({
+      id: message.id,
+      type: 'message',
+      label: `${message.author}: ${message.content.slice(0, 24)}`,
+      score: Math.max(20, message.score),
+      x,
+      y
+    });
+    edges.push({ from: message.channelId, to: message.id, label: 'message' });
+  });
+
+  return {
+    ...tracker,
+    nodes,
+    edges,
+    timeline: tracker.matches,
+    relatedPosts: tracker.matches.map((message) => ({
+      id: message.id,
+      title: message.content,
+      category: message.channel,
+      tags: [message.author, `${message.reactions} reactions`, `${message.replyCount} replies`],
+      views: message.reactions + message.replyCount,
+      likes: message.reactions,
+      relation: 'discord message'
+    }))
+  };
+}
+
+function buildModerationQueue(messages, channels, members, actions = []) {
+  const actionMap = new Map(actions.map((action) => [action.targetId, action]));
+
+  return messages
+    .map((message) => {
+      const analysis = analyzeText(message.content);
+      const action = actionMap.get(message.id);
 
       return {
-        id: `mod_${item.id}`,
-        targetId: item.id,
-        type,
-        title,
-        authorId: item.authorId,
-        author: getAuthorName(users, item.authorId),
-        postId: post?.id || item.id,
-        createdAt: item.createdAt,
-        content: item.content,
+        id: `mod_${message.id}`,
+        targetId: message.id,
+        type: 'message',
+        title: getChannelName(channels, message.channelId),
+        authorId: message.authorId,
+        author: getMemberName(members, message.authorId),
+        channel: getChannelName(channels, message.channelId),
+        createdAt: message.createdAt,
+        content: message.content,
         score: analysis.score,
         severity: severityFromScore(analysis.score),
         policies: analysis.matches,
@@ -129,128 +261,78 @@ function buildModerationQueue(posts, comments, users, actions = []) {
     .sort((a, b) => b.score - a.score);
 }
 
-function extractKeywords(posts, comments) {
-  const dictionary = ['환불', '정책', '사기', '개인정보', '전화번호', '무료', '쿠폰', '링크', '추천', '업데이트', '신고'];
-  const counts = new Map();
+function buildGameAnalytics(sessions, messages, members) {
+  const memberStats = members.map((member) => {
+    const userSessions = sessions.filter((session) => session.userId === member.id);
+    const totalMinutes = userSessions.reduce((sum, session) => sum + session.minutes, 0);
+    const gameCounts = new Map();
+    const partyCounts = new Map();
 
-  [...posts, ...comments].forEach((item) => {
-    const text = `${item.title || ''} ${item.content || ''}`;
-    dictionary.forEach((keyword) => {
-      if (text.includes(keyword)) {
-        counts.set(keyword, (counts.get(keyword) || 0) + 1);
-      }
-    });
-  });
-
-  return [...counts.entries()]
-    .map(([keyword, count]) => ({ keyword, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
-function buildSignalMap(posts, comments, users, keyword) {
-  const trendKeywords = extractKeywords(posts, comments);
-  const selectedKeyword = keyword || trendKeywords[0]?.keyword || '환불';
-  const nodes = [
-    {
-      id: 'keyword',
-      type: 'keyword',
-      label: selectedKeyword,
-      score: 100,
-      x: 50,
-      y: 50
-    }
-  ];
-  const edges = [];
-  const timeline = [];
-  const relatedPosts = [];
-
-  const matchingPosts = posts.filter((post) => `${post.title} ${post.content} ${post.tags.join(' ')}`.includes(selectedKeyword));
-  const matchingComments = comments.filter((comment) => comment.content.includes(selectedKeyword));
-
-  matchingPosts.forEach((post, index) => {
-    const analysis = analyzeText(`${post.title} ${post.content}`);
-    nodes.push({
-      id: post.id,
-      type: 'post',
-      label: post.title,
-      score: Math.max(20, analysis.score),
-      x: 24 + (index % 3) * 28,
-      y: 24 + Math.floor(index / 3) * 22
-    });
-    edges.push({ from: 'keyword', to: post.id, label: 'appears in' });
-    timeline.push({
-      id: post.id,
-      type: 'post',
-      title: post.title,
-      author: getAuthorName(users, post.authorId),
-      createdAt: post.createdAt,
-      score: analysis.score,
-      excerpt: post.content
-    });
-    relatedPosts.push({
-      id: post.id,
-      title: post.title,
-      category: post.category,
-      tags: post.tags,
-      views: post.views,
-      likes: post.likes,
-      relation: 'keyword match'
-    });
-  });
-
-  matchingComments.forEach((comment, index) => {
-    const post = posts.find((item) => item.id === comment.postId);
-    const analysis = analyzeText(comment.content);
-    const nodeId = comment.id;
-    const parentId = nodes.some((node) => node.id === comment.postId) ? comment.postId : 'keyword';
-
-    nodes.push({
-      id: nodeId,
-      type: 'comment',
-      label: `${getAuthorName(users, comment.authorId)} 댓글`,
-      score: Math.max(20, analysis.score),
-      x: 18 + (index % 4) * 22,
-      y: 62 + Math.floor(index / 4) * 20
-    });
-    edges.push({ from: parentId, to: nodeId, label: 'discussed by' });
-    timeline.push({
-      id: comment.id,
-      type: 'comment',
-      title: post?.title || 'Unknown post',
-      author: getAuthorName(users, comment.authorId),
-      createdAt: comment.createdAt,
-      score: analysis.score,
-      excerpt: comment.content
-    });
-  });
-
-  posts
-    .filter((post) => !relatedPosts.some((related) => related.id === post.id))
-    .filter((post) => post.tags.some((tag) => matchingPosts.some((matched) => matched.tags.includes(tag))))
-    .slice(0, 4)
-    .forEach((post) => {
-      relatedPosts.push({
-        id: post.id,
-        title: post.title,
-        category: post.category,
-        tags: post.tags,
-        views: post.views,
-        likes: post.likes,
-        relation: 'shared tags'
+    userSessions.forEach((session) => {
+      gameCounts.set(session.game, (gameCounts.get(session.game) || 0) + session.minutes);
+      session.party.forEach((partyId) => {
+        partyCounts.set(partyId, (partyCounts.get(partyId) || 0) + 1);
       });
     });
 
+    const favoriteGame = [...gameCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const topParty = [...partyCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const messageCount = messages.filter((message) => message.authorId === member.id).length;
+
+    return {
+      userId: member.id,
+      displayName: member.displayName,
+      discordTag: member.discordTag,
+      totalMinutes,
+      averageMinutes: userSessions.length ? Math.round(totalMinutes / userSessions.length) : 0,
+      sessions: userSessions.length,
+      favoriteGame: favoriteGame?.[0] || '-',
+      favoriteGameMinutes: favoriteGame?.[1] || 0,
+      topPartyMember: topParty ? getMemberName(members, topParty[0]) : '-',
+      messageCount
+    };
+  });
+
+  const gameStats = [...sessions.reduce((map, session) => {
+    const current = map.get(session.game) || { game: session.game, totalMinutes: 0, sessions: 0, players: new Set() };
+    current.totalMinutes += session.minutes;
+    current.sessions += 1;
+    current.players.add(session.userId);
+    map.set(session.game, current);
+    return map;
+  }, new Map()).values()]
+    .map((item) => ({
+      game: item.game,
+      totalMinutes: item.totalMinutes,
+      sessions: item.sessions,
+      players: item.players.size,
+      averageMinutes: Math.round(item.totalMinutes / item.sessions)
+    }))
+    .sort((a, b) => b.totalMinutes - a.totalMinutes);
+
+  const channelInterest = [
+    { channel: '#league-of-legends', topic: 'League of Legends', messages: messages.filter((message) => message.channelId === 'ch_lol').length },
+    { channel: '#valorant', topic: 'VALORANT', messages: messages.filter((message) => message.channelId === 'ch_valorant').length },
+    { channel: '#trade', topic: 'Trading', messages: messages.filter((message) => message.channelId === 'ch_trade').length },
+    { channel: '#general', topic: 'Daily chat', messages: messages.filter((message) => message.channelId === 'ch_general').length }
+  ].sort((a, b) => b.messages - a.messages);
+
   return {
-    keyword: selectedKeyword,
-    trendKeywords,
-    nodes,
-    edges,
-    timeline: timeline.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
-    relatedPosts
+    totalSessions: sessions.length,
+    totalMinutes: sessions.reduce((sum, session) => sum + session.minutes, 0),
+    averageSessionMinutes: sessions.length
+      ? Math.round(sessions.reduce((sum, session) => sum + session.minutes, 0) / sessions.length)
+      : 0,
+    topGame: gameStats[0]?.game || '-',
+    gameStats,
+    memberStats: memberStats.sort((a, b) => b.totalMinutes - a.totalMinutes),
+    channelInterest
   };
 }
 
 module.exports = {
+  buildKeywordTracker,
   buildModerationQueue,
-  buildSignalMap
+  buildSignalMap,
+  buildGameAnalytics
 };

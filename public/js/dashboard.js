@@ -9,8 +9,11 @@ const state = {
   logs: [],
   auditLogs: [],
   ips: [],
+  keywordTracker: null,
   signalMap: null,
   moderationQueue: [],
+  gameAnalytics: null,
+  discordStatus: null,
   me: null
 };
 
@@ -43,16 +46,20 @@ async function api(path, options = {}) {
     throw new Error(data.message || '요청을 처리하지 못했습니다.');
   }
 
-  if (res.status === 204) {
-    return null;
-  }
-
+  if (res.status === 204) return null;
   return res.json();
 }
 
 function formatDate(value) {
   if (!value) return '-';
   return new Date(value).toLocaleString('ko-KR');
+}
+
+function formatMinutes(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest}m`;
+  return `${hours}h ${rest}m`;
 }
 
 function escapeHtml(value) {
@@ -64,12 +71,35 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function severityLabel(severity) {
+  return {
+    critical: '치명',
+    high: '높음',
+    medium: '주의',
+    low: '낮음'
+  }[severity] || severity;
+}
+
 function renderMetrics() {
   $('#totalUsers').textContent = state.users.length;
-  $('#activeUsers').textContent = state.users.filter((user) => user.status === 'active').length;
   $('#queueCount').textContent = state.moderationQueue.filter((item) => item.status === 'pending').length;
-  $('#keywordCount').textContent = state.signalMap?.trendKeywords?.length || 0;
-  $('#totalAuditLogs').textContent = state.auditLogs.length;
+  $('#keywordCount').textContent = state.keywordTracker?.trendKeywords?.length || 0;
+  $('#gameSessionCount').textContent = state.gameAnalytics?.totalSessions || 0;
+  $('#averageGameTime').textContent = formatMinutes(state.gameAnalytics?.averageSessionMinutes || 0);
+}
+
+function renderDiscordStatus() {
+  const element = $('#discordStatus');
+  if (!element || !state.discordStatus) return;
+
+  const labels = {
+    ready: 'Discord: 연결됨',
+    starting: 'Discord: 연결 중',
+    disabled: 'Discord: 샘플 모드',
+    error: 'Discord: 연결 오류'
+  };
+  element.textContent = labels[state.discordStatus.state] || 'Discord: 상태 확인 필요';
+  element.classList.toggle('connected', state.discordStatus.connected);
 }
 
 function renderPermissions() {
@@ -84,39 +114,61 @@ function switchTab(tabId) {
   document.getElementById(tabId)?.classList.add('active');
 }
 
-function severityLabel(severity) {
-  const labels = {
-    critical: '치명',
-    high: '높음',
-    medium: '주의',
-    low: '낮음'
-  };
-  return labels[severity] || severity;
-}
-
 function renderTrendKeywords() {
-  const keywords = state.signalMap?.trendKeywords || [];
-  $('#trendKeywords').innerHTML = keywords
+  const keywords = state.keywordTracker?.trendKeywords || [];
+  const markup = keywords
     .map((item) => `
       <button class="keyword-chip" data-keyword="${escapeHtml(item.keyword)}" type="button">
         ${escapeHtml(item.keyword)}
         <span>${item.count}</span>
       </button>
     `)
-    .join('') || '<p class="empty">감지된 키워드가 없습니다.</p>';
+    .join('');
+
+  $('#trendKeywords').innerHTML = markup || '<p class="empty">감지된 키워드가 없습니다.</p>';
+  $('#keywordSuggestions').innerHTML = markup || '<p class="empty">키워드 후보가 없습니다.</p>';
+}
+
+function renderChannelSignals() {
+  const channels = state.keywordTracker?.channelCounts || [];
+  const rows = channels
+    .map((item) => `
+      <article class="mini-row">
+        <strong>${escapeHtml(item.channel)}</strong>
+        <span>${item.count}회</span>
+      </article>
+    `)
+    .join('');
+
+  $('#channelSignals').innerHTML = rows || '<p class="empty">채널 신호가 없습니다.</p>';
+  $('#keywordChannels').innerHTML = rows || '<p class="empty">채널 신호가 없습니다.</p>';
+}
+
+function renderKeywordMatches() {
+  const matches = state.keywordTracker?.matches || [];
+  $('#keywordInput').value = state.keywordTracker?.keyword || '';
+  $('#keywordMatches').innerHTML = matches
+    .map((message) => `
+      <article class="message-card ${escapeHtml(message.severity)}">
+        <div>
+          <strong>${escapeHtml(message.channel)}</strong>
+          <span>${escapeHtml(message.author)} · ${formatDate(message.createdAt)}</span>
+        </div>
+        <p>${escapeHtml(message.content)}</p>
+        <small>반응 ${message.reactions} · 답글 ${message.replyCount} · 위험도 ${message.score}</small>
+      </article>
+    `)
+    .join('') || '<p class="empty">해당 키워드가 포함된 메시지가 없습니다.</p>';
 }
 
 function renderPriorityQueue() {
-  const items = state.moderationQueue
-    .filter((item) => item.status === 'pending')
-    .slice(0, 4);
-
+  const items = state.moderationQueue.filter((item) => item.status === 'pending').slice(0, 4);
   $('#priorityQueue').innerHTML = items
     .map((item) => `
       <article class="queue-mini">
-        <strong>${escapeHtml(item.title)}</strong>
+        <strong>${escapeHtml(item.channel)}</strong>
         <span class="risk-badge ${escapeHtml(item.severity)}">${item.score} / ${severityLabel(item.severity)}</span>
-        <p>${escapeHtml(item.policies[0]?.label || '정책 검토 필요')}</p>
+        <p>${escapeHtml(item.author)}: ${escapeHtml(item.content)}</p>
       </article>
     `)
     .join('') || '<p class="empty">처리할 제재 후보가 없습니다.</p>';
@@ -140,17 +192,15 @@ function renderSignalMap() {
   $('#signalKeyword').value = state.signalMap.keyword;
   $('#signalMap').innerHTML = `
     <svg class="signal-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
-    ${nodes
-      .map((node) => `
-        <button class="signal-node ${escapeHtml(node.type)} ${node.score >= 55 ? 'hot' : ''}"
-          style="left:${node.x}%; top:${node.y}%"
-          title="${escapeHtml(node.label)}"
-          type="button">
-          <span>${escapeHtml(node.type)}</span>
-          <strong>${escapeHtml(node.label)}</strong>
-        </button>
-      `)
-      .join('')}
+    ${nodes.map((node) => `
+      <button class="signal-node ${escapeHtml(node.type)} ${node.score >= 55 ? 'hot' : ''}"
+        style="left:${node.x}%; top:${node.y}%"
+        title="${escapeHtml(node.label)}"
+        type="button">
+        <span>${escapeHtml(node.type)}</span>
+        <strong>${escapeHtml(node.label)}</strong>
+      </button>
+    `).join('')}
   `;
 }
 
@@ -160,33 +210,17 @@ function renderSignalTimeline() {
     .map((item) => `
       <article class="timeline-item">
         <span>${formatDate(item.createdAt)}</span>
-        <strong>${escapeHtml(item.title)}</strong>
+        <strong>${escapeHtml(item.channel)}</strong>
         <p>${escapeHtml(item.author)} · 위험도 ${item.score}</p>
-        <small>${escapeHtml(item.excerpt)}</small>
+        <small>${escapeHtml(item.content)}</small>
       </article>
     `)
     .join('') || '<p class="empty">해당 키워드의 확산 기록이 없습니다.</p>';
 }
 
-function renderRelatedPosts() {
-  const posts = state.signalMap?.relatedPosts || [];
-  $('#relatedPosts').innerHTML = posts
-    .map((post) => `
-      <article class="related-card">
-        <span>${escapeHtml(post.category)} · ${escapeHtml(post.relation)}</span>
-        <strong>${escapeHtml(post.title)}</strong>
-        <p>조회 ${post.views.toLocaleString('ko-KR')} · 좋아요 ${post.likes.toLocaleString('ko-KR')}</p>
-        <div>${post.tags.map((tag) => `<em>${escapeHtml(tag)}</em>`).join('')}</div>
-      </article>
-    `)
-    .join('') || '<p class="empty">연관 게시글이 없습니다.</p>';
-}
-
 function renderSignal() {
-  renderTrendKeywords();
   renderSignalMap();
   renderSignalTimeline();
-  renderRelatedPosts();
 }
 
 function renderModerationQueue() {
@@ -205,6 +239,7 @@ function renderModerationQueue() {
         ? `
           <div class="action-row">
             <button data-action="warn" data-target="${escapeHtml(item.targetId)}" type="button">경고</button>
+            <button data-action="timeout" data-target="${escapeHtml(item.targetId)}" type="button">타임아웃</button>
             <button class="danger-button" data-action="suspend" data-target="${escapeHtml(item.targetId)}" type="button">활동정지</button>
             <button class="secondary-button" data-action="ignore" data-target="${escapeHtml(item.targetId)}" type="button">무시</button>
           </div>
@@ -215,9 +250,9 @@ function renderModerationQueue() {
         <article class="moderation-card ${escapeHtml(item.severity)}">
           <div class="moderation-head">
             <div>
-              <span class="content-type">${escapeHtml(item.type)}</span>
-              <h3>${escapeHtml(item.title)}</h3>
-              <p>${escapeHtml(item.author)} · ${formatDate(item.createdAt)}</p>
+              <span class="content-type">${escapeHtml(item.channel)}</span>
+              <h3>${escapeHtml(item.author)}</h3>
+              <p>${formatDate(item.createdAt)}</p>
             </div>
             <span class="risk-badge ${escapeHtml(item.severity)}">${item.score} / ${severityLabel(item.severity)}</span>
           </div>
@@ -228,6 +263,44 @@ function renderModerationQueue() {
       `;
     })
     .join('') || '<p class="empty">분석된 제재 후보가 없습니다.</p>';
+}
+
+function renderGameAnalytics() {
+  const analytics = state.gameAnalytics;
+  if (!analytics) return;
+
+  $('#gameStats').innerHTML = analytics.gameStats
+    .map((game) => `
+      <article class="game-row">
+        <div>
+          <strong>${escapeHtml(game.game)}</strong>
+          <span>${game.players}명 · ${game.sessions}세션</span>
+        </div>
+        <b>${formatMinutes(game.totalMinutes)}</b>
+      </article>
+    `)
+    .join('') || '<p class="empty">게임 세션이 없습니다.</p>';
+
+  $('#channelInterest').innerHTML = analytics.channelInterest
+    .map((item) => `
+      <article class="mini-row">
+        <strong>${escapeHtml(item.channel)}</strong>
+        <span>${item.messages} messages</span>
+      </article>
+    `)
+    .join('');
+
+  $('#memberGameStats').innerHTML = analytics.memberStats
+    .map((member) => `
+      <article class="member-card">
+        <span>${escapeHtml(member.discordTag)}</span>
+        <strong>${escapeHtml(member.displayName)}</strong>
+        <p>선호 게임: ${escapeHtml(member.favoriteGame)}</p>
+        <p>총 플레이: ${formatMinutes(member.totalMinutes)} · 평균 ${formatMinutes(member.averageMinutes)}</p>
+        <p>같이 자주 함: ${escapeHtml(member.topPartyMember)}</p>
+      </article>
+    `)
+    .join('');
 }
 
 function renderUsers() {
@@ -308,16 +381,30 @@ function renderIps() {
     .join('') || '<tr><td colspan="4" class="empty">차단된 IP가 없습니다.</td></tr>';
 }
 
+function renderAll() {
+  renderPermissions();
+  renderMetrics();
+  renderTrendKeywords();
+  renderChannelSignals();
+  renderKeywordMatches();
+  renderPriorityQueue();
+  renderSignal();
+  renderModerationQueue();
+  renderGameAnalytics();
+  renderUsers();
+  renderLogs();
+  renderAuditLogs();
+  renderIps();
+}
+
 function getLogQuery() {
   const params = new URLSearchParams();
   const ip = $('#filterIp').value.trim();
   const method = $('#filterMethod').value;
   const status = $('#filterStatus').value.trim();
-
   if (ip) params.set('ip', ip);
   if (method) params.set('method', method);
   if (status) params.set('status', status);
-
   return params.toString() ? `?${params.toString()}` : '';
 }
 
@@ -329,6 +416,14 @@ async function loadLogs() {
 async function loadAuditLogs() {
   state.auditLogs = await api('/api/logs/audit');
   renderAuditLogs();
+}
+
+async function loadKeyword(keyword = '') {
+  const query = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
+  state.keywordTracker = await api(`/api/intelligence/keyword-tracker${query}`);
+  renderTrendKeywords();
+  renderChannelSignals();
+  renderKeywordMatches();
   renderMetrics();
 }
 
@@ -336,7 +431,6 @@ async function loadSignal(keyword = '') {
   const query = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
   state.signalMap = await api(`/api/intelligence/signal-map${query}`);
   renderSignal();
-  renderMetrics();
 }
 
 async function loadModerationQueue() {
@@ -346,28 +440,28 @@ async function loadModerationQueue() {
   renderMetrics();
 }
 
+async function loadGames() {
+  state.gameAnalytics = await api('/api/intelligence/game-analytics');
+  renderGameAnalytics();
+  renderMetrics();
+}
+
 async function loadDashboard() {
   state.me = await api('/api/auth/me');
   state.users = await api('/api/users');
   state.logs = await api('/api/logs');
   state.auditLogs = await api('/api/logs/audit');
   state.ips = await api('/api/ip-blocks');
+  state.keywordTracker = await api('/api/intelligence/keyword-tracker');
   state.signalMap = await api('/api/intelligence/signal-map');
   state.moderationQueue = await api('/api/intelligence/moderation-queue');
+  state.gameAnalytics = await api('/api/intelligence/game-analytics');
+  state.discordStatus = await api('/api/intelligence/discord-status');
 
   $('#currentUser').textContent = `${state.me.name} / ${state.me.role}`;
-  $('#welcomeTitle').textContent = `${state.me.name}님, 오늘의 위험 신호를 확인하세요.`;
-
-  renderPermissions();
-  renderMetrics();
-  renderTrendKeywords();
-  renderPriorityQueue();
-  renderSignal();
-  renderModerationQueue();
-  renderUsers();
-  renderLogs();
-  renderAuditLogs();
-  renderIps();
+  $('#welcomeTitle').textContent = `${state.me.name}님, 서버 활동 신호를 확인하세요.`;
+  renderDiscordStatus();
+  renderAll();
 }
 
 document.querySelectorAll('.nav-tabs button').forEach((button) => {
@@ -378,17 +472,28 @@ document.querySelectorAll('[data-tab-jump]').forEach((button) => {
   button.addEventListener('click', () => switchTab(button.dataset.tabJump));
 });
 
-$('#trendKeywords').addEventListener('click', async (event) => {
-  const button = event.target.closest('button[data-keyword]');
-  if (!button) return;
-  await loadSignal(button.dataset.keyword);
-  switchTab('signal');
+document.addEventListener('click', async (event) => {
+  const keywordButton = event.target.closest('button[data-keyword]');
+  if (!keywordButton) return;
+
+  const keyword = keywordButton.dataset.keyword;
+  await loadKeyword(keyword);
+  await loadSignal(keyword);
+  switchTab('keyword');
+});
+
+$('#keywordSearchForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const keyword = $('#keywordInput').value.trim();
+  await loadKeyword(keyword);
+  await loadSignal(keyword);
+  showToast('키워드 추적 결과를 업데이트했습니다.');
 });
 
 $('#signalSearchForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   await loadSignal($('#signalKeyword').value.trim());
-  showToast('키워드 확산 지도를 업데이트했습니다.');
+  showToast('Signal Map을 업데이트했습니다.');
 });
 
 $('#refreshModeration').addEventListener('click', async () => {
@@ -396,13 +501,19 @@ $('#refreshModeration').addEventListener('click', async () => {
   showToast('모더레이션 큐를 새로 불러왔습니다.');
 });
 
+$('#refreshGames').addEventListener('click', async () => {
+  await loadGames();
+  showToast('게임 활동 분석을 새로 불러왔습니다.');
+});
+
 $('#moderationQueue').addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
 
   const actionLabels = {
-    warn: '정책 위반 경고',
-    suspend: '위험 콘텐츠 작성자 활동정지',
+    warn: '디스코드 정책 위반 경고',
+    timeout: '디스코드 타임아웃 권장 조치',
+    suspend: '반복 위험 메시지로 활동정지',
     ignore: '관리자 검토 후 예외 처리'
   };
 
@@ -419,7 +530,7 @@ $('#moderationQueue').addEventListener('click', async (event) => {
     await loadModerationQueue();
     await loadAuditLogs();
     renderUsers();
-    showToast('모더레이션 조치를 기록했습니다.');
+    showToast('디스코드 모더레이션 조치를 기록했습니다.');
   } catch (error) {
     showToast(error.message);
   }
